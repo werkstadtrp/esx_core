@@ -801,33 +801,34 @@ function ESX.Game.GetVehicleInDirection()
         return entity, coords
     end
 end
-
----@param vehicle integer The vehicle to get the properties of
----@return table | nil
+----- vms_tuning
 function ESX.Game.GetVehicleProperties(vehicle)
     if not DoesEntityExist(vehicle) then
         return
     end
 
-    ---@type number | number[], number | number[]
     local colorPrimary, colorSecondary = GetVehicleColours(vehicle)
     local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
-    local dashboardColor = GetVehicleDashboardColor(vehicle)
-    local interiorColor = GetVehicleInteriorColour(vehicle)
-
-    if GetIsVehiclePrimaryColourCustom(vehicle) then
-        colorPrimary = { GetVehicleCustomPrimaryColour(vehicle) }
-    end
-
-    if GetIsVehicleSecondaryColourCustom(vehicle) then
-        colorSecondary = { GetVehicleCustomSecondaryColour(vehicle) }
+    local hasCustomPrimaryColor = GetIsVehiclePrimaryColourCustom(vehicle)
+    local customPrimaryColor = nil
+    if hasCustomPrimaryColor then
+        customPrimaryColor = {GetVehicleCustomPrimaryColour(vehicle)}
     end
 
     local hasCustomXenonColor, customXenonColorR, customXenonColorG, customXenonColorB = GetVehicleXenonLightsCustomColor(vehicle)
     local customXenonColor = nil
-    if hasCustomXenonColor then
-        customXenonColor = { customXenonColorR, customXenonColorG, customXenonColorB }
+    if hasCustomXenonColor then 
+        customXenonColor = {customXenonColorR, customXenonColorG, customXenonColorB}
     end
+    
+    local hasCustomSecondaryColor = GetIsVehicleSecondaryColourCustom(vehicle)
+    local customSecondaryColor = nil
+    if hasCustomSecondaryColor then
+        customSecondaryColor = {GetVehicleCustomSecondaryColour(vehicle)}
+    end
+
+    local paintTypePrimary, _, _ = GetVehicleModColor_1(vehicle)
+    local paintTypeSecondary, _ = GetVehicleModColor_2(vehicle)
 
     local extras = {}
     for extraId = 0, 20 do
@@ -840,20 +841,31 @@ function ESX.Game.GetVehicleProperties(vehicle)
     local numWheels = tostring(GetVehicleNumberOfWheels(vehicle))
 
     local TyresIndex = { -- Wheel index list according to the number of vehicle wheels.
-        ["2"] = { 0, 4 }, -- Bike and cycle.
-        ["3"] = { 0, 1, 4, 5 }, -- Vehicle with 3 wheels (get for wheels because some 3 wheels vehicles have 2 wheels on front and one rear or the reverse).
-        ["4"] = { 0, 1, 4, 5 }, -- Vehicle with 4 wheels.
-        ["6"] = { 0, 1, 2, 3, 4, 5 }, -- Vehicle with 6 wheels.
+        ['2'] = {0, 4}, -- Bike and cycle.
+        ['3'] = {0, 1, 4, 5}, -- Vehicle with 3 wheels (get for wheels because some 3 wheels vehicles have 2 wheels on front and one rear or the reverse).
+        ['4'] = {0, 1, 4, 5}, -- Vehicle with 4 wheels.
+        ['6'] = {0, 1, 2, 3, 4, 5} -- Vehicle with 6 wheels.
     }
 
     if TyresIndex[numWheels] then
-        for _, idx in pairs(TyresIndex[numWheels]) do
+        for tyre, idx in pairs(TyresIndex[numWheels]) do
             tyreBurst[tostring(idx)] = IsVehicleTyreBurst(vehicle, idx, false)
+        end
+    end
+    
+    local WheelsIndex = { -- Wheel index list according to the number of vehicle wheels.
+        ['4'] = {0, 1, 2, 3}, -- Vehicle with 4 wheels.
+        ['6'] = {0, 1, 2, 3, 4, 5} -- Vehicle with 6 wheels.
+    }
+
+    local wheelHealth = {}
+    if WheelsIndex[numWheels] then
+        for tyre, idx in pairs(WheelsIndex[numWheels]) do
+            wheelHealth[tostring(idx)] = GetVehicleWheelHealth(vehicle, idx)
         end
     end
 
     for windowId = 0, 7 do -- 13
-        RollUpWindow(vehicle, windowId) --fix when you put the car away with the window down
         windowsBroken[tostring(windowId)] = not IsVehicleWindowIntact(vehicle, windowId)
     end
 
@@ -864,38 +876,55 @@ function ESX.Game.GetVehicleProperties(vehicle)
         end
     end
 
+    local deformation = nil
+    if GetResourceState('VehicleDeformation') == 'started' then
+        deformation = exports['VehicleDeformation']:GetVehicleDeformation(vehicle)
+    end
+    
     return {
         model = GetEntityModel(vehicle),
         doorsBroken = doorsBroken,
         windowsBroken = windowsBroken,
         tyreBurst = tyreBurst,
-        tyresCanBurst = GetVehicleTyresCanBurst(vehicle),
+        wheelHealth = wheelHealth,
         plate = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle)),
         plateIndex = GetVehicleNumberPlateTextIndex(vehicle),
+
+        suspensionHeight = GetVehicleSuspensionHeight(vehicle), --  from version 2.0.6
+        wheelSize = GetVehicleWheelSize(vehicle), --  from version 2.0.6
+        wheelWidth = GetVehicleWheelWidth(vehicle), -- from version 2.0.6 
+        driftTyres = GetDriftTyresEnabled(vehicle), -- from version 2.0.6
 
         bodyHealth = ESX.Math.Round(GetVehicleBodyHealth(vehicle), 1),
         engineHealth = ESX.Math.Round(GetVehicleEngineHealth(vehicle), 1),
         tankHealth = ESX.Math.Round(GetVehiclePetrolTankHealth(vehicle), 1),
-
         fuelLevel = ESX.Math.Round(GetVehicleFuelLevel(vehicle), 1),
         dirtLevel = ESX.Math.Round(GetVehicleDirtLevel(vehicle), 1),
+
+        deformation = deformation,
+
         color1 = colorPrimary,
         color2 = colorSecondary,
+        customPrimaryColor = customPrimaryColor,
+        customSecondaryColor = customSecondaryColor,
 
+        paintTypePrimary = paintTypePrimary,
+        paintTypeSecondary = paintTypeSecondary,
+
+        dashboardColor = GetVehicleDashboardColour(vehicle),
+        interiorColor = GetVehicleInteriorColour(vehicle),
         pearlescentColor = pearlescentColor,
         wheelColor = wheelColor,
-
-        dashboardColor = dashboardColor,
-        interiorColor = interiorColor,
-
+        
         wheels = GetVehicleWheelType(vehicle),
         windowTint = GetVehicleWindowTint(vehicle),
+
         xenonColor = GetVehicleXenonLightsColor(vehicle),
         customXenonColor = customXenonColor,
-
-        neonEnabled = { IsVehicleNeonLightEnabled(vehicle, 0), IsVehicleNeonLightEnabled(vehicle, 1), IsVehicleNeonLightEnabled(vehicle, 2), IsVehicleNeonLightEnabled(vehicle, 3) },
-
+        
+        neonEnabled = {IsVehicleNeonLightEnabled(vehicle, 0), IsVehicleNeonLightEnabled(vehicle, 1), IsVehicleNeonLightEnabled(vehicle, 2), IsVehicleNeonLightEnabled(vehicle, 3)},
         neonColor = table.pack(GetVehicleNeonLightsColour(vehicle)),
+
         extras = extras,
         tyreSmokeColor = table.pack(GetVehicleTyreSmokeColor(vehicle)),
 
@@ -910,7 +939,6 @@ function ESX.Game.GetVehicleProperties(vehicle)
         modFender = GetVehicleMod(vehicle, 8),
         modRightFender = GetVehicleMod(vehicle, 9),
         modRoof = GetVehicleMod(vehicle, 10),
-        modRoofLivery = GetVehicleRoofLivery(vehicle),
 
         modEngine = GetVehicleMod(vehicle, 11),
         modBrakes = GetVehicleMod(vehicle, 12),
@@ -924,9 +952,7 @@ function ESX.Game.GetVehicleProperties(vehicle)
         modXenon = IsToggleModOn(vehicle, 22),
 
         modFrontWheels = GetVehicleMod(vehicle, 23),
-        modCustomFrontWheels = GetVehicleModVariation(vehicle, 23),
         modBackWheels = GetVehicleMod(vehicle, 24),
-        modCustomBackWheels = GetVehicleModVariation(vehicle, 24),
 
         modPlateHolder = GetVehicleMod(vehicle, 25),
         modVanityPlate = GetVehicleMod(vehicle, 26),
@@ -949,15 +975,14 @@ function ESX.Game.GetVehicleProperties(vehicle)
         modAerials = GetVehicleMod(vehicle, 43),
         modTrimB = GetVehicleMod(vehicle, 44),
         modTank = GetVehicleMod(vehicle, 45),
-        modWindows = GetVehicleMod(vehicle, 46),
+        modDoorR = GetVehicleMod(vehicle, 47),
         modLivery = GetVehicleMod(vehicle, 48) == -1 and GetVehicleLivery(vehicle) or GetVehicleMod(vehicle, 48),
-        modLightbar = GetVehicleMod(vehicle, 49),
+        modLightbar = GetVehicleMod(vehicle, 49)
     }
 end
 
----@param vehicle integer The vehicle to set the properties of
----@param props table The properties to set
----@return nil
+-----
+
 function ESX.Game.SetVehicleProperties(vehicle, props)
     if not DoesEntityExist(vehicle) then
         return
@@ -965,11 +990,6 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     local colorPrimary, colorSecondary = GetVehicleColours(vehicle)
     local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
     SetVehicleModKit(vehicle, 0)
-
-    if props.tyresCanBurst ~= nil then
-        SetVehicleTyresCanBurst(vehicle, props.tyresCanBurst)
-    end
-
     if props.plate ~= nil then
         SetVehicleNumberPlateText(vehicle, props.plate)
     end
@@ -991,32 +1011,33 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.dirtLevel ~= nil then
         SetVehicleDirtLevel(vehicle, props.dirtLevel + 0.0)
     end
+    if props.customPrimaryColor ~= nil then
+        SetVehicleCustomPrimaryColour(vehicle, props.customPrimaryColor[1], props.customPrimaryColor[2], props.customPrimaryColor[3])
+    end
+    if props.customPrimaryColor ~= nil and props.paintTypePrimary then
+        SetVehicleModColor_1(vehicle, props.paintTypePrimary, 0, props.pearlescentColor or pearlescentColor)
+    end
+    if props.customSecondaryColor ~= nil then
+        SetVehicleCustomSecondaryColour(vehicle, props.customSecondaryColor[1], props.customSecondaryColor[2], props.customSecondaryColor[3])
+    end
+    if props.customSecondaryColor ~= nil and props.paintTypeSecondary then
+        SetVehicleModColor_2(vehicle, props.paintTypeSecondary, 0)
+    end
     if props.color1 ~= nil then
-        if type(props.color1) == "table" then
-            SetVehicleCustomPrimaryColour(vehicle, props.color1[1], props.color1[2], props.color1[3])
-        else
-            SetVehicleColours(vehicle, props.color1, colorSecondary)
-        end
+        SetVehicleColours(vehicle, props.color1, colorSecondary)
     end
     if props.color2 ~= nil then
-        if type(props.color2) == "table" then
-            SetVehicleCustomSecondaryColour(vehicle, props.color2[1], props.color2[2], props.color2[3])
-        else
-            SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)
-        end
+        SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2)
+    end
+    if props.interiorColor then
+        SetVehicleInteriorColor(vehicle, props.interiorColor)
+    end
+    if props.dashboardColor then
+        SetVehicleDashboardColour(vehicle, props.dashboardColor)
     end
     if props.pearlescentColor ~= nil then
         SetVehicleExtraColours(vehicle, props.pearlescentColor, wheelColor)
     end
-
-    if props.interiorColor ~= nil then
-        SetVehicleInteriorColor(vehicle, props.interiorColor)
-    end
-
-    if props.dashboardColor ~= nil then
-        SetVehicleDashboardColor(vehicle, props.dashboardColor)
-    end
-
     if props.wheelColor ~= nil then
         SetVehicleExtraColours(vehicle, props.pearlescentColor or pearlescentColor, props.wheelColor)
     end
@@ -1026,23 +1047,17 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.windowTint ~= nil then
         SetVehicleWindowTint(vehicle, props.windowTint)
     end
-
     if props.neonEnabled ~= nil then
         SetVehicleNeonLightEnabled(vehicle, 0, props.neonEnabled[1])
         SetVehicleNeonLightEnabled(vehicle, 1, props.neonEnabled[2])
         SetVehicleNeonLightEnabled(vehicle, 2, props.neonEnabled[3])
         SetVehicleNeonLightEnabled(vehicle, 3, props.neonEnabled[4])
     end
-
     if props.extras ~= nil then
         for extraId, enabled in pairs(props.extras) do
-            extraId = tonumber(extraId)
-            if extraId then
-                SetVehicleExtra(vehicle, extraId, not enabled)
-            end
+            SetVehicleExtra(vehicle, tonumber(extraId), enabled and 0 or 1)
         end
     end
-
     if props.neonColor ~= nil then
         SetVehicleNeonLightsColour(vehicle, props.neonColor[1], props.neonColor[2], props.neonColor[3])
     end
@@ -1091,11 +1106,6 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.modRoof ~= nil then
         SetVehicleMod(vehicle, 10, props.modRoof, false)
     end
-
-    if props.modRoofLivery ~= nil then
-        SetVehicleRoofLivery(vehicle, props.modRoofLivery)
-    end
-
     if props.modEngine ~= nil then
         SetVehicleMod(vehicle, 11, props.modEngine, false)
     end
@@ -1108,7 +1118,14 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.modHorns ~= nil then
         SetVehicleMod(vehicle, 14, props.modHorns, false)
     end
-    if props.modSuspension ~= nil then
+    local classAllowed = GetVehicleClass(vehicle) ~= 14 and
+                         GetVehicleClass(vehicle) ~= 15 and
+                         GetVehicleClass(vehicle) ~= 16 and
+                         GetVehicleClass(vehicle) ~= 21 and
+                         GetVehicleClass(vehicle) ~= 22
+    if classAllowed and (props.suspensionHeight ~= nil and props.suspensionHeight ~= 0.00) then --  from version 2.0.6
+        SetVehicleSuspensionHeight(vehicle, props.suspensionHeight)
+    elseif props.modSuspension ~= nil then
         SetVehicleMod(vehicle, 15, props.modSuspension, false)
     end
     if props.modArmor ~= nil then
@@ -1121,10 +1138,10 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
         ToggleVehicleMod(vehicle, 22, props.modXenon)
     end
     if props.modFrontWheels ~= nil then
-        SetVehicleMod(vehicle, 23, props.modFrontWheels, props.modCustomFrontWheels)
+        SetVehicleMod(vehicle, 23, props.modFrontWheels, false)
     end
     if props.modBackWheels ~= nil then
-        SetVehicleMod(vehicle, 24, props.modBackWheels, props.modCustomBackWheels)
+        SetVehicleMod(vehicle, 24, props.modBackWheels, false)
     end
     if props.modPlateHolder ~= nil then
         SetVehicleMod(vehicle, 25, props.modPlateHolder, false)
@@ -1201,10 +1218,7 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.windowsBroken ~= nil then
         for k, v in pairs(props.windowsBroken) do
             if v then
-                k = tonumber(k)
-                if k then
-                    RemoveVehicleWindow(vehicle, k)
-                end
+                SmashVehicleWindow(vehicle, tonumber(k))
             end
         end
     end
@@ -1212,10 +1226,7 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.doorsBroken ~= nil then
         for k, v in pairs(props.doorsBroken) do
             if v then
-                k = tonumber(k)
-                if k then
-                    SetVehicleDoorBroken(vehicle, k, true)
-                end
+                SetVehicleDoorBroken(vehicle, tonumber(k), true)
             end
         end
     end
@@ -1223,12 +1234,29 @@ function ESX.Game.SetVehicleProperties(vehicle, props)
     if props.tyreBurst ~= nil then
         for k, v in pairs(props.tyreBurst) do
             if v then
-                k = tonumber(k)
-                if k then
-                    SetVehicleTyreBurst(vehicle, k, true, 1000.0)
-                end
+                SetVehicleTyreBurst(vehicle, tonumber(k), true, 1000.0)
             end
         end
+    end
+    
+    if props.modFrontWheels ~= nil and props.modFrontWheels ~= -1 then
+        if props.wheelSize ~= nil then
+            Citizen.CreateThread(function()
+                Citizen.Wait(30)
+                SetVehicleWheelSize(vehicle, props.wheelSize)
+            end)
+        end
+    
+        if props.wheelWidth ~= nil then
+            Citizen.CreateThread(function()
+                Citizen.Wait(30)
+                SetVehicleWheelWidth(vehicle, props.wheelWidth)
+            end)
+        end
+    end
+
+    if props.driftTyres ~= nil then -- from version 2.0.6
+        SetDriftTyresEnabled(vehicle, tonumber(props.driftTyres))
     end
 end
 
