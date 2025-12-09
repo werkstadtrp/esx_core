@@ -1,5 +1,5 @@
-SetMapName("San Andreas")
-SetGameType("ESX Legacy")
+SetMapName("Werkstadt")
+SetGameType("Roleplay")
 
 local oneSyncState = GetConvar("onesync", "off")
 local newPlayer = "INSERT INTO `users` SET `accounts` = ?, `identifier` = ?, `ssn` = ?, `group` = ?"
