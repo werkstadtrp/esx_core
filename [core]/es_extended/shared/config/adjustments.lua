@@ -1,7 +1,7 @@
 Config.DisableHealthRegeneration = false -- Player will no longer regenerate health
-Config.DisableVehicleRewards = false -- Disables Player Receiving weapons from vehicles
-Config.DisableNPCDrops = false -- stops NPCs from dropping weapons on death
-Config.DisableDispatchServices = true -- Disable Dispatch services
+Config.DisableVehicleRewards = true -- Disables Player Receiving weapons from vehicles
+Config.DisableNPCDrops = true -- stops NPCs from dropping weapons on death
+Config.DisableDispatchServices2 = true -- Disable Dispatch services
 Config.DisableScenarios = true -- Disable Scenarios
 Config.DisableAimAssist = false -- disables AIM assist (mainly on controllers)
 Config.DisableVehicleSeatShuff = false -- Disables vehicle seat shuff
@@ -35,11 +35,11 @@ Config.RemoveHudComponents = {
 }
 
 Config.Multipliers = {
-    pedDensity = 1.0,
+    pedDensity = 0.0,
     scenarioPedDensityInterior = 0.0,
     scenarioPedDensityExterior = 1.0,
     ambientVehicleRange = 1.0,
-    parkedVehicleDensity = 1.0,
+    parkedVehicleDensity = 5.0,
     randomVehicleDensity = 1.0,
     vehicleDensity = 1.0
 }
@@ -68,12 +68,11 @@ Config.CustomAIPlates = "........" -- Custom plates for AI vehicles
 ]]
 
 Config.DiscordActivity = {
-    appId = 0, -- Discord Application ID,
+    appId = 1293727365326704713, -- Discord Application ID,
     assetName = "LargeIcon", --image name for the "large" icon.
     assetText = "{server_name}", -- Text to display on the asset
     buttons = {
         { label = "Join Server", url = "fivem://connect/{server_endpoint}" },
-        { label = "Discord", url = "https://discord.esx-framework.org" },
     },
     presence = "{player_name} [{player_id}] | {server_players}/{server_maxplayers}",
     refresh = 1 * 60 * 1000, -- 1 minute
